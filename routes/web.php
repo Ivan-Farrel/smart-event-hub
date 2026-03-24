@@ -1,12 +1,12 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use App\Http\Controllers\EventController; // Pastikan ini di atas
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\CommunityController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// 1. Halaman Welcome (Public)
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -16,27 +16,49 @@ Route::get('/', function () {
     ]);
 });
 
-// 2. Route yang WAJIB Login (auth)
 Route::middleware(['auth', 'verified'])->group(function () {
     
-    // Dashboard
     Route::get('/dashboard', function () {
         return Inertia::render('Dashboard');
     })->name('dashboard');
 
-    // Profile Management
-    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    Route::controller(ProfileController::class)->group(function () {
+        Route::get('/profile', 'edit')->name('profile.edit');
+        Route::patch('/profile', 'update')->name('profile.update');
+        Route::delete('/profile', 'destroy')->name('profile.destroy');
+    });
 
-    // Event Management
-    // Daftar semua event
-    Route::get('/events', [EventController::class, 'index'])->name('events.index');
+    // --- COMMUNITY SYSTEM ---
+    // PENTING: Pindah create ke atas SLUG biar gak 404
+    Route::get('/communities/create', [CommunityController::class, 'create'])->name('communities.create');
+    Route::post('/communities', [CommunityController::class, 'store'])->name('communities.store');
     
-    // Detail satu event (Pake slug biar URL-nya cakep)
-    Route::get('/events/{event:slug}', [EventController::class, 'show'])->name('events.show');
+    Route::get('/communities', [CommunityController::class, 'index'])->name('communities.index');
+    Route::get('/communities/{community:slug}', [CommunityController::class, 'show'])->name('communities.show');
+    Route::post('/communities/{community:slug}/join', [CommunityController::class, 'join'])->name('communities.join');
 
-    Route::post('/events/{event:slug}/join', [EventController::class, 'join'])->name('events.join');
+    // --- EVENT SYSTEM ---
+    Route::get('/events', [EventController::class, 'index'])->name('events.index');
+    Route::get('/events/{event:slug}', [EventController::class, 'show'])->name('events.show');
+    
+    Route::post('/events/{event:slug}/join', [EventController::class, 'join'])
+        ->middleware('role:member,organizer')
+        ->name('events.join');
+
+    // --- MANAGEMENT ROLE (ORGANIZER & ADMIN) ---
+    Route::middleware('role:organizer,admin')->group(function () {
+        Route::resource('events', EventController::class)->except(['index', 'show'])->parameters([
+            'events' => 'event:slug'
+        ]);
+        Route::get('/my-communities', [CommunityController::class, 'myCommunities'])->name('communities.mine');
+    });
+
+    // --- KHUSUS ADMIN ---
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/admin/approvals', [CommunityController::class, 'pendingApprovals'])->name('admin.approvals');
+        Route::patch('/admin/communities/{community}/approve', [CommunityController::class, 'approve'])->name('admin.communities.approve');
+        Route::patch('/admin/events/{event}/approve', [EventController::class, 'approve'])->name('admin.events.approve');
+    });
 });
 
 require __DIR__.'/auth.php';

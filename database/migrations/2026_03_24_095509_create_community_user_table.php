@@ -11,25 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('communities', function (Blueprint $table) {
+        Schema::create('community_user', function (Blueprint $table) {
             $table->id();
+            // Hubungkan ke tabel users
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
-            $table->string('name');
-            $table->string('slug')->unique();
-            $table->text('description');
-            $table->string('image')->nullable();
-            // PASTIKAN DUA BARIS INI ADA:
-            $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
-            $table->enum('join_type', ['auto', 'manual'])->default('auto');
+            // Hubungkan ke tabel communities
+            $table->foreignId('community_id')->constrained()->onDelete('cascade');
             $table->timestamps();
         });
     }
-
     /**
      * Reverse the migrations.
      */
     public function down(): void
     {
-        Schema::dropIfExists('communities');
+        Schema::dropIfExists('community_user');
     }
 };
