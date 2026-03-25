@@ -11,7 +11,10 @@ class CheckRole
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  \Illuminate\Http\Request  $request
+     * @param  \Closure  $next
+     * @param  string  ...$roles
+     * @return \Symfony\Component\HttpFoundation\Response
      */
     public function handle(Request $request, Closure $next, ...$roles): Response
     {
@@ -20,12 +23,21 @@ class CheckRole
             return redirect()->route('login');
         }
 
-        // 2. Cek apakah role user ada di dalam daftar role yang diizinkan
-        // Contoh: middleware('role:admin,organizer') -> $roles berisi ['admin', 'organizer']
-        if (!in_array($request->user()->role, $roles)) {
-            abort(403, 'Anda tidak memiliki akses ke halaman ini.');
+        // 2. Ambil role user saat ini
+        $userRole = $request->user()->role;
+
+        // 3. Cek apakah role user ada di dalam daftar role yang diizinkan
+        // Contoh: middleware('role:admin,organizer')
+        if (in_array($userRole, $roles)) {
+            return $next($request);
         }
 
-        return $next($request);
+        // 4. JIKA TIDAK PUNYA AKSES:
+        // Bukannya di-abort, kita arahkan ke dashboard yang sesuai rolenya
+        if ($userRole === 'admin') {
+            return redirect()->route('admin.dashboard')->with('error', 'Anda dialihkan ke dashboard admin.');
+        }
+
+        return redirect()->route('dashboard')->with('error', 'Anda tidak memiliki akses ke halaman tersebut.');
     }
 }

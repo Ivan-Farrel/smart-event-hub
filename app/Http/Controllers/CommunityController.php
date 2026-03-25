@@ -71,5 +71,23 @@ class CommunityController extends Controller
         ]);
     }
 
+    // Menampilkan daftar komunitas yang butuh approval (Khusus Admin)
+    public function pendingApprovals()
+    {
+        $pendingCommunities = Community::where('status', 'pending')->with('creator')->latest()->get();
+
+        return Inertia::render('Admin/Approvals', [
+            'communities' => $pendingCommunities
+        ]);
+    }
+
+    // Proses Approve
+    public function approve(Community $community)
+    {
+        $community->update(['status' => 'approved']);
+
+        return redirect()->back()->with('message', "Komunitas {$community->name} berhasil disetujui!");
+    }
+
     
 }
